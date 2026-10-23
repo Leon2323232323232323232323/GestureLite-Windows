@@ -1,0 +1,116 @@
+name: Build and release Windows portable
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['src/**', '.cargo/**', '*.toml', 'Cargo.lock', 'scripts/**', '.github/workflows/**', '*-source.zip*', 'THIRD_PARTY_NOTICES.txt', 'config.example.json']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  prepare-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import initial reviewed Windows source once
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f Cargo.toml ]]; then
+            sha256sum -c GestureLite-Windows-1.0.10.0-source.zip.sha256
+            python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          from zipfile import ZipFile
+          allowed = {'README.md', 'THIRD_PARTY_NOTICES.txt', 'Cargo.toml', 'Cargo.lock', 'clippy.toml', 'rustfmt.toml', 'rust-toolchain.toml', 'config.example.json', '.gitignore'}
+          with ZipFile('GestureLite-Windows-1.0.10.0-source.zip') as archive:
+              for item in archive.infolist():
+                  path = PurePosixPath(item.filename)
+                  if path.parts[0] != 'GestureLite-Windows' or '..' in path.parts or path.is_absolute():
+                      raise SystemExit('Unsafe source path')
+                  relative = PurePosixPath(*path.parts[1:])
+                  if str(relative) == '.github/workflows/release.yml':
+                      continue
+                  if str(relative) not in allowed and relative.parts[0] not in ('src', '.cargo', 'scripts'):
+                      raise SystemExit(f'Unexpected source file: {relative}')
+                  target = Path(str(relative))
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(archive.read(item))
+          PY
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add README.md THIRD_PARTY_NOTICES.txt Cargo.toml Cargo.lock clippy.toml rustfmt.toml rust-toolchain.toml config.example.json .gitignore src .cargo scripts
+            git commit -m 'Import unchanged Windows application source and portable packaging'
+            git push origin HEAD:main
+          fi
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  windows-build:
+    needs: prepare-source
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare-source.outputs.commit }}
+      - name: Install the existing Windows release toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal --component rustfmt --component clippy
+          if ($LASTEXITCODE -ne 0) { throw 'Toolchain installation failed' }
+      - name: Format, lint, test, build and validate portable ZIP
+        shell: pwsh
+        run: ./scripts/package-github.ps1
+      - name: Validate first-run JSON without hooks or input injection
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath './target/x86_64-pc-windows-msvc/release/gesturelite.exe' -ArgumentList '--check-config' -WindowStyle Hidden -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw 'Configuration check failed' }
+          $config = Join-Path $env:LOCALAPPDATA 'GestureLite/config.json'
+          if (!(Test-Path -LiteralPath $config)) { throw 'LocalAppData configuration was not created' }
+          Get-Content -LiteralPath $config -Raw | ConvertFrom-Json | Out-Null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GestureLite-Windows-portable
+          path: dist/github/*.zip*
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [prepare-source, windows-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: GestureLite-Windows-portable
+          path: release
+      - name: Publish Windows portable preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_SHA: ${{ needs.prepare-source.outputs.commit }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          cat > notes.md <<'NOTES'
+          Windows 11 x64 portable build of the existing GestureLite 1.0.10.0 application. Extract the portable ZIP and open GestureLite.exe; no installer is required.
+
+          This executable is unsigned. Smart App Control or organizational policies may block it, and SmartScreen may warn. Do not disable Windows security or install local test certificates to run this download. Checksums verify download integrity, not publisher trust.
+
+          The native macro editor, optional click action on release, ordinary tap passthrough and one gesture per held press are retained. Configuration remains in %LOCALAPPDATA%\GestureLite. Quit any other GestureLite instance before opening the portable copy. Startup is optional; see README.
+
+          Formatting, Clippy, all unit tests, locked release build, x64 PE/ZIP hash validation and first-run JSON validation passed on GitHub's Windows runner. Real mouse/application acceptance is still required; CI does not inject live input. This is the first public portable preview.
+
+          The Microsoft Store 1.0.0.0 submission package and installed app were not modified. No MSIX or development certificates are included. The separate Mac download is in the GestureLite-Mac repository.
+          NOTES
+          gh release create "v1.0.10.0-build.${RUN_NUMBER}" release/*.zip release/*.sha256 \
+            --repo "$GH_REPO" --target "$BUILD_SHA" --prerelease \
+            --title 'GestureLite Windows 1.0.10.0 Portable Preview' --notes-file notes.md
