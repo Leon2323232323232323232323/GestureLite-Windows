@@ -1,0 +1,7 @@
+/target/
+/dist/
+*.log
+*.pfx
+*.p12
+*.key
+*.cer

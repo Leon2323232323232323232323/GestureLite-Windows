@@ -1,0 +1,6 @@
+[target.x86_64-pc-windows-msvc]
+# Keep the distributable independent of the Visual C++ redistributable.
+rustflags = ["-C", "target-feature=+crt-static"]
+[build]
+target = "x86_64-pc-windows-msvc"
+

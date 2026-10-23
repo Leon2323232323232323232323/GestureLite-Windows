@@ -1,0 +1,119 @@
+{
+  "enabled": true,
+  "threshold_px": 18,
+  "dominance_ratio": 1.25,
+  "triggers": [
+    {
+      "trigger": "XButton1",
+      "tap_mode": "TapPassthrough",
+      "left": "ALT+LEFT",
+      "right": "ALT+RIGHT",
+      "up": "VOLUMEUP",
+      "down": "VOLUMEDOWN"
+    },
+    {
+      "trigger": "XButton2",
+      "tap_mode": "TapPassthrough",
+      "left": "WIN+CTRL+LEFT",
+      "right": "WIN+CTRL+RIGHT",
+      "up": "WIN+TAB",
+      "down": "WIN+D"
+    },
+    {
+      "trigger": "F13",
+      "tap_mode": "GestureOnly",
+      "left": "WIN+SHIFT+LEFT",
+      "right": "WIN+SHIFT+RIGHT",
+      "up": "WIN+UP",
+      "down": "WIN+DOWN"
+    },
+    {
+      "trigger": "F14",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F15",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F16",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F17",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F18",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F19",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F20",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F21",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F22",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F23",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    },
+    {
+      "trigger": "F24",
+      "tap_mode": "GestureOnly",
+      "left": null,
+      "right": null,
+      "up": null,
+      "down": null
+    }
+  ]
+}
